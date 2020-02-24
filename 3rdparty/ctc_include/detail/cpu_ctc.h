@@ -28,15 +28,15 @@
 #include <dmlc/omp.h>
 
 #include "ctc_helper.h"
-
+typedef int64_t index_t;
 namespace mxnet_warpctc {
 
 template<typename ProbT>
 class CpuCTC {
 public:
     // Noncopyable
-    CpuCTC(int alphabet_size, int minibatch, void* workspace,
-           int blank_label) :
+    CpuCTC(index_t alphabet_size, index_t minibatch, void* workspace,
+           index_t blank_label) :
             alphabet_size_(alphabet_size), minibatch_(minibatch),
             workspace_(workspace), blank_label_(blank_label) {
 
@@ -48,28 +48,28 @@ public:
     ctcStatus_t cost_and_grad(const ProbT* const activations,
                               ProbT *grads,
                               ProbT* costs,
-                              const int* const flat_labels,
-                              const int* const label_lengths,
-                              const int* const input_lengths);
+                              const index_t* const flat_labels,
+                              const index_t* const label_lengths,
+                              const index_t* const input_lengths);
 
 
     ctcStatus_t score_forward(const ProbT* const activations,
                               ProbT* costs,
-                              const int* const flat_labels,
-                              const int* const label_lengths,
-                              const int* const input_lengths);
+                              const index_t* const flat_labels,
+                              const index_t* const label_lengths,
+                              const index_t* const input_lengths);
 
 private:
 
     class CpuCTC_metadata {
 
     private:
-        int setup_labels(const int* const labels, int blank_label, int L, int S);
+        int setup_labels(const index_t* const labels, index_t blank_label, int L, int S);
 
     public:
-        CpuCTC_metadata(int L, int S, int T, int mb, int alphabet_size,
-                        void* workspace, size_t bytes_used, int blank_label,
-                        const int* const labels);
+        CpuCTC_metadata(int L, int S, int T, index_t mb, index_t alphabet_size,
+                        void* workspace, size_t bytes_used, index_t blank_label,
+                        const index_t* const labels);
 
         ProbT* alphas;
         ProbT* betas;
@@ -80,17 +80,17 @@ private:
         int repeats;
     };
 
-    int alphabet_size_; // Number of characters plus blank
-    int minibatch_;
+    index_t alphabet_size_; // Number of characters plus blank
+    index_t minibatch_;
     void* workspace_;
-    int blank_label_;
+    index_t blank_label_;
 
     void log_softmax(const ProbT* const activations, ProbT* log_probs,
-                     const int* const input_lengths);
+                     const index_t* const input_lengths);
 
     std::tuple<ProbT, bool>
             cost_and_grad_kernel(ProbT *grad, const ProbT* const log_probs,
-                                 const int* const labels, int T, int L,
+                                 const index_t* const labels, int T, int L,
                                  int mb, size_t bytes_used);
 
     ProbT compute_alphas(const ProbT* log_probs, int repeats, int S, int T,
@@ -110,11 +110,11 @@ private:
 };
 
 template<typename ProbT>
-CpuCTC<ProbT>::CpuCTC_metadata::CpuCTC_metadata(int L, int S, int T, int mb,
-                                                int alphabet_size,
+CpuCTC<ProbT>::CpuCTC_metadata::CpuCTC_metadata(int L, int S, int T, index_t mb,
+                                                index_t alphabet_size,
                                                 void* workspace, size_t bytes_used,
-                                                int blank_label,
-                                                const int* const labels) {
+                                                index_t blank_label,
+                                                const index_t* const labels) {
 
     alphas = reinterpret_cast<ProbT *>(static_cast<char *>(workspace) + bytes_used);
     bytes_used += sizeof(ProbT) * S * T;
@@ -135,8 +135,8 @@ CpuCTC<ProbT>::CpuCTC_metadata::CpuCTC_metadata(int L, int S, int T, int mb,
 }
 
 template<typename ProbT>
-int CpuCTC<ProbT>::CpuCTC_metadata::setup_labels(const int* const labels,
-                                                 int blank_label, int L, int S) {
+int CpuCTC<ProbT>::CpuCTC_metadata::setup_labels(const index_t* const labels,
+                                                 index_t blank_label, int L, int S) {
     int e_counter = 0;
     int s_counter = 0;
 
@@ -171,23 +171,22 @@ int CpuCTC<ProbT>::CpuCTC_metadata::setup_labels(const int* const labels,
 template<typename ProbT>
 void
 CpuCTC<ProbT>::log_softmax(const ProbT* const activations, ProbT* log_probs,
-                           const int* const input_lengths) {
+                           const index_t* const input_lengths) {
 #pragma omp parallel for
-    for (int mb = 0; mb < minibatch_; ++mb) {
-        for(int c = 0; c < input_lengths[mb]; ++c) {
-            int col_offset = (mb + minibatch_ * c) * alphabet_size_;
+    for (index_t mb = 0; mb < minibatch_; ++mb) {
+        for(index_t c = 0; c < input_lengths[mb]; ++c) {
+            index_t col_offset = (mb + minibatch_ * c) * alphabet_size_;
             ProbT max_activation = -std::numeric_limits<ProbT>::infinity();
-            for(int r = 0; r < alphabet_size_; ++r)
+            for(index_t r = 0; r < alphabet_size_; ++r)
                 max_activation = std::max(max_activation, activations[r + col_offset]);
 
             ProbT denom = ProbT(0.);
-            for(int r = 0; r < alphabet_size_; ++r) {
+            for(index_t r = 0; r < alphabet_size_; ++r) {
                 denom += std::exp(activations[r + col_offset] - max_activation);
             }
 
-            for(int r = 0; r < alphabet_size_; ++r) {
-                log_probs[r + col_offset] = activations[r + col_offset]
-                                            - max_activation - std::log(denom);
+            for(index_t r = 0; r < alphabet_size_; ++r) {
+                log_probs[r + col_offset] = activations[r + col_offset] - max_activation - std::log(denom);
             }
         }
     }
@@ -196,7 +195,7 @@ CpuCTC<ProbT>::log_softmax(const ProbT* const activations, ProbT* log_probs,
 template<typename ProbT>
 std::tuple<ProbT, bool>
 CpuCTC<ProbT>::cost_and_grad_kernel(ProbT *grad, const ProbT* const log_probs,
-                                    const int* const labels,
+                                    const index_t* const labels,
                                     int T, int L, int mb, size_t bytes_used) {
 
     const int S = 2*L + 1; // Number of labels with blanks
@@ -386,9 +385,9 @@ ctcStatus_t
 CpuCTC<ProbT>::cost_and_grad(const ProbT* const activations,
                              ProbT *grads,
                              ProbT *costs,
-                             const int* const flat_labels,
-                             const int* const label_lengths,
-                             const int* const input_lengths) {
+                             const index_t* const flat_labels,
+                             const index_t* const label_lengths,
+                             const index_t* const input_lengths) {
     if (activations == nullptr ||
         grads == nullptr ||
         costs == nullptr ||
@@ -400,15 +399,15 @@ CpuCTC<ProbT>::cost_and_grad(const ProbT* const activations,
 
     ProbT* log_probs = static_cast<ProbT *>(workspace_);
 
-    int maxT = *std::max_element(input_lengths, input_lengths + minibatch_);
+    index_t maxT = *std::max_element(input_lengths, input_lengths + minibatch_);
 
     size_t bytes_used = sizeof(ProbT) * minibatch_ * alphabet_size_ * maxT;
 
     //per minibatch memory
     size_t per_minibatch_bytes = 0;
 
-    int maxL = *std::max_element(label_lengths, label_lengths + minibatch_);;
-    int maxS = 2 * maxL + 1;
+    index_t maxL = *std::max_element(label_lengths, label_lengths + minibatch_);;
+    index_t maxS = 2 * maxL + 1;
 
     //output
     per_minibatch_bytes += sizeof(float) * alphabet_size_;
@@ -445,9 +444,9 @@ CpuCTC<ProbT>::cost_and_grad(const ProbT* const activations,
 template<typename ProbT>
 ctcStatus_t CpuCTC<ProbT>::score_forward(const ProbT* const activations,
                                          ProbT* costs,
-                                         const int* const flat_labels,
-                                         const int* const label_lengths,
-                                         const int* const input_lengths) {
+                                         const index_t* const flat_labels,
+                                         const index_t* const label_lengths,
+                                         const index_t* const input_lengths) {
     if (activations == nullptr ||
         costs == nullptr ||
         flat_labels == nullptr ||

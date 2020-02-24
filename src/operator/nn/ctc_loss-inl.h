@@ -45,9 +45,9 @@ enum CTCLossOpOutputs { kOut, kGrad };
 }
 
 template <typename T>
-inline void get_workspace_size(const std::vector<int> *label_lengths,
-                               const std::vector<int> *data_lengths,
-                               int alphabet_size, int minibatch, bool isGPU,
+inline void get_workspace_size(const std::vector<index_t> *label_lengths,
+                               const std::vector<index_t> *data_lengths,
+                               index_t alphabet_size, index_t minibatch, bool isGPU,
                                size_t *size_bytes) {
   // This is the max of all S and T for all examples in the minibatch.
   int maxL = *std::max_element(label_lengths->data(),
@@ -124,8 +124,8 @@ inline void get_workspace_size(const std::vector<int> *label_lengths,
 template <typename DType, typename xpu>
 inline void LabelTensorToPackedVector(mshadow::Tensor<xpu, 2, DType> labels,
                                       int padding_mask,
-                                      std::vector<int> *packed_labels,
-                                      std::vector<int> *label_lengths) {
+                                      std::vector<index_t> *packed_labels,
+                                      std::vector<index_t> *label_lengths) {
   int batch = labels.size(0);
   int max_num_labels = labels.size(1);
 
@@ -149,8 +149,8 @@ inline void LabelTensorToPackedVector(mshadow::Tensor<xpu, 2, DType> labels,
 template <typename DType, typename xpu>
 inline void PackLabelByLength(mshadow::Tensor<xpu, 2, DType> labels,
                               mshadow::Tensor<xpu, 1, DType> in_label_lengths,
-                              std::vector<int> *packed_labels,
-                              std::vector<int> *label_lengths) {
+                              std::vector<index_t> *packed_labels,
+                              std::vector<index_t> *label_lengths) {
   int batch = labels.size(0);
   int max_num_labels = labels.size(1);
 
@@ -319,20 +319,20 @@ void CTCLossOpForward(const nnvm::NodeAttrs& attrs,
     Tensor<xpu, 1, real_t> costs = out_data.get<xpu, 1, real_t>(s);
     Tensor<xpu, 3, real_t> grad = out_grad.get<xpu, 3, real_t>(s);
 
-    int max_seq_len = data.size(0);
-    int batch_size = data.size(1);
-    int alphabet_size = data.size(2);
+    index_t max_seq_len = data.size(0);
+    index_t batch_size = data.size(1);
+    index_t alphabet_size = data.size(2);
 
     // data_lengths
-    std::vector<int> data_lengths(batch_size, max_seq_len);
+    std::vector<index_t> data_lengths(batch_size, max_seq_len);
     if (param.use_data_lengths) {
       int kInputLength = 2;
       IndexTensorToVector(inputs[kInputLength].get<xpu, 1, real_t>(s), &data_lengths);
     }
 
     // label_lengths
-    std::vector<int> packed_labels;
-    std::vector<int> label_lengths(batch_size);
+    std::vector<index_t> packed_labels;
+    std::vector<index_t> label_lengths(batch_size);
 
     if (param.use_label_lengths) {
       int kLabelLength = 2 + param.use_data_lengths;
@@ -348,7 +348,7 @@ void CTCLossOpForward(const nnvm::NodeAttrs& attrs,
                                batch_size, data.kDevCPU ? false : true, &size_bytes);
 
     // round-up so there are enough elems in memory
-    int num_tmp_elems = (size_bytes + sizeof(real_t) - 1) / sizeof(real_t);
+    index_t num_tmp_elems = (size_bytes + sizeof(real_t) - 1) / sizeof(real_t);
     Tensor<xpu, 1, real_t> workspace =
       ctx.requested[0].get_space_typed<xpu, 1, real_t>(Shape1(num_tmp_elems), s);
 

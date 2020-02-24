@@ -27,11 +27,11 @@
 namespace mshadow {
 template <typename DType>
 ctcStatus_t compute_ctc_cost(const Tensor<cpu, 3, DType> activations,
-                             DType *costs, DType *grads, int *labels,
-                             int *label_lengths, int *data_lengths,
-                             void *workspace, bool isTraining, int blank_label) {
-  int minibatch = static_cast<int>(activations.size(1));
-  int alphabet_size = static_cast<int>(activations.size(2));
+                             DType *costs, DType *grads, index_t *labels,
+                             index_t *label_lengths, index_t *data_lengths,
+                             void *workspace, bool isTraining, index_t blank_label) {
+  index_t minibatch = static_cast<index_t>(activations.size(1));
+  index_t alphabet_size = static_cast<index_t>(activations.size(2));
   mxnet_warpctc::CpuCTC<DType> ctc(alphabet_size, minibatch, workspace, blank_label);
   if (isTraining) {
     return ctc.cost_and_grad(activations.dptr_, grads, costs, labels,
