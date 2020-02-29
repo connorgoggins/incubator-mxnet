@@ -1221,7 +1221,7 @@ void GruBackwardSingleLayer(DType* ws,
       const Tensor<cpu, 2, DType> tmp_dbx(tmp_buf + T * N * D * H, Shape2(H * 3, T));
       const Tensor<cpu, 2, DType> tmp_dbh(tmp_buf + T * N * D * H + 3 * H * T, Shape2(H * 3, T));
       #pragma omp parallel for num_threads(omp_threads)
-      for (index_t i = 0; i < H * T * 3; ++i) {
+      for (size_t i = 0; i < H * T * 3; ++i) {
         tmp_dbx.dptr_[i] = 0;
         tmp_dbh.dptr_[i] = 0;
       }
@@ -1339,7 +1339,7 @@ void GruBackwardSingleLayer(DType* ws,
         const Tensor<cpu, 2, DType> tmp_dbx(tmp_buf + T * N * D * H, Shape2(H * 3, T));
         const Tensor<cpu, 2, DType> tmp_dbh(tmp_buf + T * N * D * H + 3 * H * T, Shape2(H * 3, T));
         #pragma omp parallel for num_threads(omp_threads)
-        for (index_t i = 0; i < H * T * 3; ++i) {
+        for (size_t i = 0; i < H * T * 3; ++i) {
           tmp_dbx.dptr_[i] = 0;
           tmp_dbh.dptr_[i] = 0;
         }
@@ -2086,7 +2086,7 @@ void VanillaRNNBackwardSingleLayer(DType* ws,
       const Tensor<cpu, 2, DType> tmp_dbx(tmp_buf + T * N * D * H, Shape2(H, T));
       const Tensor<cpu, 2, DType> tmp_dbh(tmp_buf + T * N * D * H + H * T, Shape2(H, T));
       #pragma omp parallel for num_threads(omp_threads)
-      for (index_t i = 0; i < H * T; ++i) {
+      for (size_t i = 0; i < H * T; ++i) {
         tmp_dbx.dptr_[i] = 0;
         tmp_dbh.dptr_[i] = 0;
       }
@@ -2195,7 +2195,7 @@ void VanillaRNNBackwardSingleLayer(DType* ws,
         const Tensor<cpu, 2, DType> tmp_dbx(tmp_buf + T * N * D * H, Shape2(H, T));
         const Tensor<cpu, 2, DType> tmp_dbh(tmp_buf + T * N * D * H + H * T, Shape2(H, T));
         #pragma omp parallel for num_threads(omp_threads)
-        for (index_t i = 0; i < H * T; ++i) {
+        for (size_t i = 0; i < H * T; ++i) {
           tmp_dbx.dptr_[i] = 0;
           tmp_dbh.dptr_[i] = 0;
         }
