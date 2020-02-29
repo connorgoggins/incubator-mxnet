@@ -63,7 +63,7 @@ struct RNNParam : public dmlc::Parameter<RNNParam> {
   bool bidirectional, state_outputs;
   int mode;
   float p;
-  index_t seq_length_, batch_size_, input_size_;
+  size_t seq_length_, batch_size_, input_size_;
 
   bool use_sequence_length;
   dmlc::optional<int> projection_size;
@@ -147,7 +147,7 @@ inline int GetRnnParamSize(int num_layer,
     size1 = (input_size + proj_size + 2) * size;
     size2 = (proj_size * direction + proj_size + 2) * size;
   }
-  index_t param_size = size1 + (num_layer - 1) * size2;
+  size_t param_size = size1 + (num_layer - 1) * size2;
   if (projection_size.has_value()) {
     param_size += projection_size.value() * state_size * num_layer * direction;
   }
