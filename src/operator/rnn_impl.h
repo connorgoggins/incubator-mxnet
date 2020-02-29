@@ -59,7 +59,7 @@ void LstmForwardTrainingSingleLayer(DType* ws,
                                     DType* rs,
                                     bool state_outputs,
                                     bool bid,
-                                    const index_t T,
+                                    const size_t T,
                                     const size_t N,
                                     const size_t I,
                                     const int H,
@@ -92,7 +92,7 @@ void LstmForwardTrainingSingleLayer(DType* ws,
   linalg_gemm(x, wx, yx_flat, alpha, beta, false, true);
 
   const int omp_threads = mxnet::engine::OpenMP::Get()->GetRecommendedOMPThreadCount();
-  for (index_t i = 0; i < T; ++i) {
+  for (size_t i = 0; i < T; ++i) {
     index_t t = bid ? T - 1 - i : i;
     linalg_gemm(i ? h : hx, wh, yh_flat, alpha, beta, false, true);
     #pragma omp parallel for num_threads(omp_threads)
@@ -127,7 +127,7 @@ void LstmForwardTraining(DType* ws,
                          bool state_outputs,
                          const int L,
                          const int D,
-                         const index_t T,
+                         const size_t T,
                          const size_t N,
                          const size_t I,
                          const int H,
@@ -175,7 +175,7 @@ void LstmForwardTraining(DType* ws,
       b_ptr += b_size;
       if (dropout > 0.0f) {
         #pragma omp parallel for num_threads(omp_threads)
-        for (index_t j = 0; j < T * N * H * D; j++) {
+        for (size_t j = 0; j < T * N * H * D; j++) {
           int rand_data = rand_r(&seed_);
           if (static_cast<float>(rand_data % 1000) < static_cast<float>(1000 * dropout)) {
             dropout_random[i * T * N * H * D + j] = 0;
@@ -196,7 +196,7 @@ void LstmForwardTraining(DType* ws,
     }
   }
   #pragma omp parallel for num_threads(omp_threads)
-  for (index_t i = 0; i < T * N * H * D; ++i) {
+  for (size_t i = 0; i < T * N * H * D; ++i) {
     y_ptr[i] = (rs2 + y_offset)[i];
   }
 }
@@ -205,7 +205,7 @@ template<typename DType>
 void LstmForwardInferenceSingleLayer(DType* ws,
                                      bool state_outputs,
                                      bool bid,
-                                     const index_t T,
+                                     const size_t T,
                                      const size_t N,
                                      const size_t I,
                                      const int H,
@@ -235,7 +235,7 @@ void LstmForwardInferenceSingleLayer(DType* ws,
   linalg_gemm(x, wx, yx_flat, alpha, beta, false, true);
 
   const int omp_threads = mxnet::engine::OpenMP::Get()->GetRecommendedOMPThreadCount();
-  for (index_t i = 0; i < T; ++i) {
+  for (size_t i = 0; i < T; ++i) {
     index_t t = bid ? T - 1 - i : i;
     linalg_gemm(i ? h : hx, wh, yh_flat, alpha, beta, false, true);
     #pragma omp parallel for num_threads(omp_threads)
@@ -265,7 +265,7 @@ void LstmForwardInference(DType* ws,
                           bool state_outputs,
                           const int L,
                           const int D,
-                          const index_t T,
+                          const size_t T,
                           const size_t N,
                           const size_t I,
                           const int H,
@@ -329,7 +329,7 @@ void LstmBackwardSingleLayer(DType* ws,
                              DType* rs,
                              DType* tmp_buf,
                              bool bid,
-                             const index_t T,
+                             const size_t T,
                              const size_t N,
                              const size_t I,
                              const int H,
@@ -405,7 +405,7 @@ void LstmBackwardSingleLayer(DType* ws,
     }
   }
 
-  for (index_t i = T - 1; i >= 0; --i) {
+  for (size_t i = T - 1; i >= 0; --i) {
     index_t t = bid ? T - 1 - i : i;
     index_t tnext = bid ? t + 1 : t - 1;
     const Tensor<cpu, 2, DType>& dhnext = i ? dh : dhx;
@@ -458,13 +458,13 @@ void LstmBackwardSingleLayer(DType* ws,
   if (req_params != kNullOp && req_params != kAddTo) {
     linalg_gemm(dyx, x, dwx, alpha, beta0, true, false);
   }
-  const index_t row = T * N;
-  const index_t col = H * 4;
+  const size_t row = T * N;
+  const size_t col = H * 4;
   if (req_params != kNullOp) {
     if (req_params != kAddTo) {
-      for (index_t i = 0; i < row; ++i) {
+      for (size_t i = 0; i < row; ++i) {
         #pragma omp parallel for num_threads(omp_threads)
-        for (index_t j = 0; j < col; ++j) {
+        for (size_t j = 0; j < col; ++j) {
           dbx[j] += dyx[i][j];
           dbh[j] = dbx[j];
         }
@@ -473,20 +473,20 @@ void LstmBackwardSingleLayer(DType* ws,
       const Tensor<cpu, 2, DType> tmp_dbx(tmp_buf, Shape2(col, T));
       const Tensor<cpu, 2, DType> tmp_dbh(tmp_buf + col * T, Shape2(col, T));
       #pragma omp parallel for num_threads(omp_threads)
-      for (index_t i = 0; i < col * T; ++i) {
+      for (size_t i = 0; i < col * T; ++i) {
         tmp_dbx.dptr_[i] = 0;
         tmp_dbh.dptr_[i] = 0;
       }
-      for (index_t t = T - 1; t >= 0; --t) {
+      for (size_t t = T - 1; t >= 0; --t) {
         #pragma omp parallel for num_threads(omp_threads)
-        for (index_t j = 0; j < col; ++j) {
-          for (index_t i = 0; i < N; ++i) {
+        for (size_t j = 0; j < col; ++j) {
+          for (size_t i = 0; i < N; ++i) {
             tmp_dbx[j][t] += dyx[t * N + i][j];
             tmp_dbh[j][t] = tmp_dbx[j][t];
           }
         }
         #pragma omp parallel for num_threads(omp_threads)
-        for (index_t j = 0; j < col; ++j) {
+        for (size_t j = 0; j < col; ++j) {
           dbx[j] += tmp_dbx[j][t] + dbx[j];
           dbh[j] += tmp_dbh[j][t] + dbh[j];
         }
@@ -500,7 +500,7 @@ void LstmBackward(DType* ws,
                   DType* rs,
                   const int L,
                   const int D,
-                  const index_t T,
+                  const size_t T,
                   const size_t N,
                   const size_t I,
                   const int H,
@@ -572,7 +572,7 @@ void LstmBackward(DType* ws,
       dropout_random = dropout_random - T * N * D * H;
       const int omp_threads = mxnet::engine::OpenMP::Get()->GetRecommendedOMPThreadCount();
       #pragma omp parallel for num_threads(omp_threads)
-      for (index_t j = 0; j < T * N * D * H; j++) {
+      for (size_t j = 0; j < T * N * D * H; j++) {
         if (dropout_random[j] == 0) {
           dx.dptr_[j] = 0;
         } else {
@@ -589,7 +589,7 @@ void GruForwardInferenceSingleLayer(DType* ws,
                                     DType* tmp_buf,
                                     bool state_outputs,
                                     const int D,
-                                    const index_t T,
+                                    const size_t T,
                                     const size_t N,
                                     const size_t I,
                                     const int H,
@@ -652,7 +652,7 @@ void GruForwardInferenceSingleLayer(DType* ws,
     linalg_gemm(x, back_wx, dback_gemmC1, alpha, beta, false, true);
   }
 
-  for (index_t t = 0; t < T; t++) {
+  for (size_t t = 0; t < T; t++) {
     //  perform the first direction, X * wx and H * wh for each step
     //  ht-1 * wh, ht-1:[N, H] wh:[3 * H, H]
     Tensor<cpu, 2, DType> dht_1(ht_1, Shape2(N, D * H));
@@ -739,7 +739,7 @@ void GruForwardInference(DType* ws,
                          bool state_outputs,
                          const int L,
                          const int D,
-                         const index_t T,
+                         const size_t T,
                          const size_t N,
                          size_t I,
                          const int H,
@@ -792,7 +792,7 @@ void GruForwardTrainingSingleLayer(DType* ws,
                                    DType* tmp_buf,
                                    bool state_outputs,
                                    const int D,
-                                   const index_t T,
+                                   const size_t T,
                                    const size_t N,
                                    const size_t I,
                                    const int H,
@@ -865,7 +865,7 @@ void GruForwardTrainingSingleLayer(DType* ws,
     linalg_gemm(x, back_wx, dback_gemmC1, alpha, beta, false, true);
   }
 
-  for (index_t t = 0; t < T; t++) {
+  for (size_t t = 0; t < T; t++) {
     //  perform the first direction, X * wx and H * wh for each step
     //  ht-1 * wh, ht-1:[N, H] wh:[3 * H, H]
     Tensor<cpu, 2, DType> dht_1(ht_1, Shape2(N, D * H));
@@ -964,7 +964,7 @@ void GruForwardTraining(DType* ws,
                         bool state_outputs,
                         const int L,
                         const int D,
-                        const index_t T,
+                        const size_t T,
                         const size_t N,
                         size_t I,
                         const int H,
@@ -1003,7 +1003,7 @@ void GruForwardTraining(DType* ws,
     if (dropout > 0.0f && l > 0) {
       const int omp_threads = mxnet::engine::OpenMP::Get()->GetRecommendedOMPThreadCount();
       #pragma omp parallel for num_threads(omp_threads)
-      for (index_t i = 0; i < T * N * I; i++) {
+      for (size_t i = 0; i < T * N * I; i++) {
         int rand_data = rand_r(&seed_);
         if (static_cast<float>(rand_data % 1000) < static_cast<float>(1000 * dropout)) {
           dropout_random[(l - 1) * T * N * I + i] = 0;
@@ -1035,7 +1035,7 @@ void GruForwardTraining(DType* ws,
   }
   const int omp_threads = mxnet::engine::OpenMP::Get()->GetRecommendedOMPThreadCount();
   #pragma omp parallel for num_threads(omp_threads)
-  for (index_t i = 0; i < T * N * H * D; ++i) {
+  for (size_t i = 0; i < T * N * H * D; ++i) {
     y_ptr[i] = y_l[i];
   }
 }
@@ -1044,7 +1044,7 @@ template <typename DType>
 void GruBackwardSingleLayer(DType* ws,
                             DType* tmp_buf,
                             const int D,
-                            const index_t T,
+                            const size_t T,
                             const size_t N,
                             const size_t I,
                             const int H,
@@ -1112,7 +1112,7 @@ void GruBackwardSingleLayer(DType* ws,
     }
   }
   #pragma omp parallel for num_threads(omp_threads)
-  for (index_t i = 0; i < N * H; ++i) {
+  for (size_t i = 0; i < N * H; ++i) {
     if (dhy_ptr) {
       dht1[i] = dhy_ptr[i];
     } else {
@@ -1129,7 +1129,7 @@ void GruBackwardSingleLayer(DType* ws,
 
   if (D == 2) {
     #pragma omp parallel for num_threads(omp_threads)
-    for (index_t i = 0; i < N * H; ++i) {
+    for (size_t i = 0; i < N * H; ++i) {
       if (dhy_ptr) {
         back_dht1[i] = dhy_ptr[N * H + i];
       } else {
@@ -1143,7 +1143,7 @@ void GruBackwardSingleLayer(DType* ws,
       }
     }
   }
-  for (index_t t = T - 1; t >= 0; --t) {
+  for (size_t t = T - 1; t >= 0; --t) {
     if (t) {
       ht1 = y_ptr + (t - 1) * N * D * H;
     } else {
@@ -1212,7 +1212,7 @@ void GruBackwardSingleLayer(DType* ws,
     if (req_params != kAddTo) {
       #pragma omp parallel for num_threads(omp_threads)
       for (int i = 0; i < 3 * H; ++i) {
-        for (index_t j = 0; j < N * T; ++j) {
+        for (size_t j = 0; j < N * T; ++j) {
           dbx[i] += da[j * 3 * H + i];
           dbh[i] += dar[j * 3 * H + i];
         }
@@ -1226,7 +1226,7 @@ void GruBackwardSingleLayer(DType* ws,
         tmp_dbh.dptr_[i] = 0;
       }
 
-      for (index_t t = T - 1; t >= 0; --t) {
+      for (size_t t = T - 1; t >= 0; --t) {
         #pragma omp parallel for num_threads(omp_threads)
         for (int i = 0; i < 3 * H; ++i) {
           for (size_t j = 0; j < N; ++j) {
@@ -1259,7 +1259,7 @@ void GruBackwardSingleLayer(DType* ws,
   }
 
   if (D == 2) {
-    for (index_t t = 0; t < T; ++t) {
+    for (size_t t = 0; t < T; ++t) {
       if (t == T-1) {
         back_ht1 = hx_;
       } else {
@@ -1330,7 +1330,7 @@ void GruBackwardSingleLayer(DType* ws,
       if (req_params != kAddTo) {
         #pragma omp parallel for num_threads(omp_threads)
         for (int i = 0; i < 3 * H; ++i) {
-          for (index_t j = 0; j < N * T; ++j) {
+          for (size_t j = 0; j < N * T; ++j) {
             back_dbx[i] += da[j * 3 * H + i];
             back_dbh[i] += dar[j * 3 * H + i];
           }
@@ -1343,7 +1343,7 @@ void GruBackwardSingleLayer(DType* ws,
           tmp_dbx.dptr_[i] = 0;
           tmp_dbh.dptr_[i] = 0;
         }
-        for (index_t t = T - 1; t >= 0; --t) {
+        for (size_t t = T - 1; t >= 0; --t) {
           #pragma omp parallel for num_threads(omp_threads)
           for (int i = 0; i < 3 * H; ++i) {
             for (size_t j = 0; j < N; ++j) {
@@ -1377,7 +1377,7 @@ void GruBackwardSingleLayer(DType* ws,
   }
   if (req_state != kNullOp) {
     #pragma omp parallel for num_threads(omp_threads)
-    for (index_t i = 0; i < N * H * D; ++i) {
+    for (size_t i = 0; i < N * H * D; ++i) {
       dhx[i] = dht1[i];
     }
   }
@@ -1388,7 +1388,7 @@ void GruBackward(DType* ws,
                  DType* rs,
                  const int L,
                  const int D,
-                 const index_t T,
+                 const size_t T,
                  const size_t N,
                  size_t I,
                  const int H,
@@ -1461,7 +1461,7 @@ void GruBackward(DType* ws,
     if (dropout > 0.0f && l > 0 && req_data != kNullOp) {
       dropout_random = dropout_random - T * N * D * H;
       #pragma omp parallel for num_threads(omp_threads)
-      for (index_t i = 0; i < T * N * I; i++) {
+      for (size_t i = 0; i < T * N * I; i++) {
         if (dropout_random[i] == 0) {
           dx_l[i] = 0;
         } else {
@@ -1471,7 +1471,7 @@ void GruBackward(DType* ws,
     }
     if (l > 0) {
       #pragma omp parallel for num_threads(omp_threads)
-      for (index_t i = 0; i < T * N * H * D; ++i) {
+      for (size_t i = 0; i < T * N * H * D; ++i) {
         dy_l[i] = dx_l[i];
       }
       gateR_l = gateR_l - T * D * N * H;
@@ -1505,7 +1505,7 @@ void VanillaRNNForwardInferenceSingleLayer(DType* ws,
                                            DType* tmp_buf,
                                            bool state_outputs,
                                            const int D,
-                                           const index_t T,
+                                           const size_t T,
                                            const size_t N,
                                            const size_t I,
                                            const int H,
@@ -1566,7 +1566,7 @@ void VanillaRNNForwardInferenceSingleLayer(DType* ws,
     linalg_gemm(x, back_wx, dback_gemmC1, alpha, beta, false, true);
   }
 
-  for (index_t t = 0; t < T; t++) {
+  for (size_t t = 0; t < T; t++) {
     //  perform the first direction, X * wx and H * wh for each step
     //  ht-1 * wh, ht-1:[N, H] wh:[H, H]
     Tensor<cpu, 2, DType> dht_1(ht_1, Shape2(N, D * H));
@@ -1647,7 +1647,7 @@ void VanillaRNNForwardInference(DType* ws,
                                 bool state_outputs,
                                 const int L,
                                 const int D,
-                                const index_t T,
+                                const size_t T,
                                 const size_t N,
                                 size_t I,
                                 const int H,
@@ -1702,7 +1702,7 @@ void VanillaRNNForwardTrainingSingleLayer(DType* ws,
                                        DType* tmp_buf,
                                        bool state_outputs,
                                        const int D,
-                                       const index_t T,
+                                       const size_t T,
                                        const size_t N,
                                        const size_t I,
                                        const int H,
@@ -1768,7 +1768,7 @@ void VanillaRNNForwardTrainingSingleLayer(DType* ws,
     linalg_gemm(x, back_wx, dback_gemmC1, alpha, beta, false, true);
   }
 
-  for (index_t t = 0; t < T; t++) {
+  for (size_t t = 0; t < T; t++) {
     //  perform the first direction, X * wx and H * wh for each step
     //  ht-1 * wh, ht-1:[N, H] wh:[H, H]
     Tensor<cpu, 2, DType> dht_1(ht_1, Shape2(N, D * H));
@@ -1852,7 +1852,7 @@ void VanillaRNNForwardTraining(DType* ws,
                                bool state_outputs,
                                const int L,
                                const int D,
-                               const index_t T,
+                               const size_t T,
                                const size_t N,
                                size_t I,
                                const int H,
@@ -1889,7 +1889,7 @@ void VanillaRNNForwardTraining(DType* ws,
     }
     if (dropout > 0.0f && l > 0) {
       #pragma omp parallel for num_threads(omp_threads)
-      for (index_t i = 0; i < T * N * I; i++) {
+      for (size_t i = 0; i < T * N * I; i++) {
         int rand_data = rand_r(&seed_);
         if (static_cast<float>(rand_data % 1000) < static_cast<float>(1000 * dropout)) {
           dropout_random[(l - 1) * T * N * I + i] = 0;
@@ -1917,7 +1917,7 @@ void VanillaRNNForwardTraining(DType* ws,
     wh_l = wx_l + I * H;
   }
   #pragma omp parallel for num_threads(omp_threads)
-  for (index_t i = 0; i < T * N * H * D; ++i) {
+  for (size_t i = 0; i < T * N * H * D; ++i) {
     y_ptr[i] = y_l[i];
   }
 }
@@ -1926,7 +1926,7 @@ template <typename DType>
 void VanillaRNNBackwardSingleLayer(DType* ws,
                                    DType* tmp_buf,
                                    const int D,
-                                   const index_t T,
+                                   const size_t T,
                                    const size_t N,
                                    const size_t I,
                                    const int H,
@@ -1986,7 +1986,7 @@ void VanillaRNNBackwardSingleLayer(DType* ws,
   }
 
   #pragma omp parallel for num_threads(omp_threads)
-  for (index_t i = 0; i < N * H; ++i) {
+  for (size_t i = 0; i < N * H; ++i) {
     if (dhy_ptr) {
       dht1[i] = dhy_ptr[i];
     } else {
@@ -2003,7 +2003,7 @@ void VanillaRNNBackwardSingleLayer(DType* ws,
 
   if (D == 2) {
     #pragma omp parallel for num_threads(omp_threads)
-    for (index_t i = 0; i < N * H; ++i) {
+    for (size_t i = 0; i < N * H; ++i) {
       if (dhy_ptr) {
         back_dht1[i] = dhy_ptr[N * H + i];
       } else {
@@ -2017,7 +2017,7 @@ void VanillaRNNBackwardSingleLayer(DType* ws,
       }
     }
   }
-  for (index_t t = T - 1; t >= 0; --t) {
+  for (size_t t = T - 1; t >= 0; --t) {
     if (t) {
       ht1 = y_ptr + (t - 1) * N * D * H;
     } else {
@@ -2077,7 +2077,7 @@ void VanillaRNNBackwardSingleLayer(DType* ws,
     if (req_params != kAddTo) {
       #pragma omp parallel for num_threads(omp_threads)
       for (int i = 0; i < H; ++i) {
-        for (index_t j = 0; j < N * T; ++j) {
+        for (size_t j = 0; j < N * T; ++j) {
           dbx[i] += dar[j * H + i];
           dbh[i] = dbx[i];
         }
@@ -2091,10 +2091,10 @@ void VanillaRNNBackwardSingleLayer(DType* ws,
         tmp_dbh.dptr_[i] = 0;
       }
 
-      for (index_t t = T - 1; t >= 0; --t) {
+      for (size_t t = T - 1; t >= 0; --t) {
         #pragma omp parallel for num_threads(omp_threads)
         for (int i = 0; i < H; ++i) {
-          for (index_t j = 0; j < N; ++j) {
+          for (size_t j = 0; j < N; ++j) {
             tmp_dbx[i][t] += dar[t * N * H + j * H + i];
             tmp_dbh[i][t] = tmp_dbx[i][t];
           }
@@ -2124,7 +2124,7 @@ void VanillaRNNBackwardSingleLayer(DType* ws,
   }
 
   if (D == 2) {
-    for (index_t t = 0; t < T; ++t) {
+    for (size_t t = 0; t < T; ++t) {
       if (t == T-1) {
         back_ht1 = hx_;
       } else {
@@ -2186,7 +2186,7 @@ void VanillaRNNBackwardSingleLayer(DType* ws,
       if (req_params != kAddTo) {
         #pragma omp parallel for num_threads(omp_threads)
         for (int i = 0; i < H; ++i) {
-          for (index_t j = 0; j < N * T; ++j) {
+          for (size_t j = 0; j < N * T; ++j) {
             back_dbx[i] += dar[j * H + i];
             back_dbh[i] = back_dbx[i];
           }
@@ -2200,7 +2200,7 @@ void VanillaRNNBackwardSingleLayer(DType* ws,
           tmp_dbh.dptr_[i] = 0;
         }
 
-        for (index_t t = T - 1; t >= 0; --t) {
+        for (size_t t = T - 1; t >= 0; --t) {
           #pragma omp parallel for num_threads(omp_threads)
           for (int i = 0; i < H; ++i) {
             for (size_t j = 0; j < N; ++j) {
@@ -2234,7 +2234,7 @@ void VanillaRNNBackwardSingleLayer(DType* ws,
   }
   if (req_state != kNullOp) {
     #pragma omp parallel for num_threads(omp_threads)
-    for (index_t i = 0; i < N * H * D; ++i) {
+    for (size_t i = 0; i < N * H * D; ++i) {
       dhx[i] = dht1[i];
     }
   }
@@ -2245,7 +2245,7 @@ void VanillaRNNBackward(DType* ws,
                         DType* rs,
                         const int L,
                         const int D,
-                        const index_t T,
+                        const size_t T,
                         const size_t N,
                         size_t I,
                         const int H,
@@ -2316,7 +2316,7 @@ void VanillaRNNBackward(DType* ws,
     if (dropout > 0.0f && l > 0 && req_data != kNullOp) {
       dropout_random = dropout_random - T * N * D * H;
       #pragma omp parallel for num_threads(omp_threads)
-      for (index_t i = 0; i < T * N * I; i++) {
+      for (size_t i = 0; i < T * N * I; i++) {
         if (dropout_random[i] == 0) {
           dx_l[i] = 0;
         } else {
@@ -2326,7 +2326,7 @@ void VanillaRNNBackward(DType* ws,
     }
     if (l > 0) {
       #pragma omp parallel for num_threads(omp_threads)
-      for (index_t i = 0; i < T * N * H * D; ++i) {
+      for (size_t i = 0; i < T * N * H * D; ++i) {
         dy_l[i] = dx_l[i];
       }
       gateN_l = gateN_l -  T * D * N * H;
