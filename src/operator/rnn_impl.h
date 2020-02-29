@@ -60,8 +60,8 @@ void LstmForwardTrainingSingleLayer(DType* ws,
                                     bool state_outputs,
                                     bool bid,
                                     const index_t T,
-                                    const index_t N,
-                                    const index_t I,
+                                    const size_t N,
+                                    const size_t I,
                                     const int H,
                                     const Tensor<cpu, 2, DType> &x,
                                     const Tensor<cpu, 2, DType> &hx,
@@ -88,7 +88,7 @@ void LstmForwardTrainingSingleLayer(DType* ws,
   const int offset = bid ? H : 0;
   const DType alpha = 1.0;
   const DType beta = 0.0;
-  const index_t cell_size = N * H;
+  const size_t cell_size = N * H;
   linalg_gemm(x, wx, yx_flat, alpha, beta, false, true);
 
   const int omp_threads = mxnet::engine::OpenMP::Get()->GetRecommendedOMPThreadCount();
@@ -96,7 +96,7 @@ void LstmForwardTrainingSingleLayer(DType* ws,
     index_t t = bid ? T - 1 - i : i;
     linalg_gemm(i ? h : hx, wh, yh_flat, alpha, beta, false, true);
     #pragma omp parallel for num_threads(omp_threads)
-    for (index_t jk = 0; jk < cell_size; ++jk) {
+    for (size_t jk = 0; jk < cell_size; ++jk) {
       index_t j = jk / H;
       index_t k = jk % H;
       DType it = sigmoid<DType>(yx[t][j][0][k] + yh[j][0][k] + bx[0][k] + bh[0][k]);
