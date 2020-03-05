@@ -1673,9 +1673,6 @@ build_c_docs() {
 
 
 build_r_docs() {
-    python --version
-    alias python='python3'
-    python --version
     set -ex
     pushd .
 
@@ -1688,6 +1685,8 @@ build_r_docs() {
 
     mkdir -p $r_root/$r_build
 
+    unittest_ubuntu_minimal_R
+ 
     eval "$(/work/miniconda/bin/conda shell.bash hook)"
     cd docs/r_docs/
     conda env create -f environment.yml -p /work/conda_env
@@ -1695,8 +1694,7 @@ build_r_docs() {
     pip install themes/mx-theme
     pip install -e /work/mxnet/python --user
     cd /work/mxnet/
-    unittest_ubuntu_minimal_R
-
+    
     pushd $r_root
 
     echo "----------------------------------------------"
@@ -1712,12 +1710,13 @@ build_r_docs() {
     mkdir api
     rm -rf toctree
     mkdir toctree
-    apt install python3-pip -y
-    pip3 install -r Rd2SphinxRst/requirements.txt
+    #apt install python3-pip -y
+    #pip3 install -r Rd2SphinxRst/requirements.txt
+    conda install --file Rd2SphinxRst/requirements.txt
     python3 Rd2SphinxRst/Rd2SphinxRst.py ./man/ ./toctree/ ../docs/r_docs/r/api/
 
-    cd ../docs/r_docs/r/
-    pushd /work/mxnet/docs/r_docs/r/
+    #cd ../docs/r_docs/r/
+    cd /work/mxnet/docs/r_docs/r/
     pwd
     echo "here!"
     make clean
@@ -1727,6 +1726,9 @@ build_r_docs() {
     echo "------------------Finished--------------------"
     echo "----------------------------------------------"
 
+    cd /work/mxnet/$r_root
+
+    rm $r_build/$r_pdf
 
     R_LIBS=/tmp/r-site-library R CMD Rd2pdf . --no-preview --encoding=utf8 -o $r_build/$r_pdf
 
