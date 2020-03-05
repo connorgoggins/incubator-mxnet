@@ -1673,6 +1673,9 @@ build_c_docs() {
 
 
 build_r_docs() {
+    python --version
+    alias python='python3'
+    python --version
     set -ex
     pushd .
 
@@ -1685,9 +1688,42 @@ build_r_docs() {
 
     mkdir -p $r_root/$r_build
 
+    eval "$(/work/miniconda/bin/conda shell.bash hook)"
+    cd docs/r_docs/
+    conda env create -f environment.yml -p /work/conda_env
+    conda activate /work/conda_env
+    pip install themes/mx-theme
+    pip install -e /work/mxnet/python --user
+
     unittest_ubuntu_minimal_R
 
     pushd $r_root
+
+    echo "----------------------------------------------"
+    echo "------------------Running---------------------"
+    echo "----------------------------------------------"
+    rm -rf Rd2SphinxRst
+    git clone https://github.com/connorgoggins/Rd2SphinxRst.git
+    cd Rd2SphinxRst
+    git fetch --all
+    git checkout toctree_generator
+    cd ..
+    rm -rf api
+    mkdir api
+    rm -rf toctree
+    mkdir toctree
+    apt install python3-pip -y
+    pip3 install -r Rd2SphinxRst/requirements.txt
+    python3 Rd2SphinxRst/Rd2SphinxRst.py ./man/ ./toctree/ ../docs/r_docs/r/api/
+
+    cd ../docs/r_docs/r/
+    make clean
+    make html EVAL=0
+
+    echo "----------------------------------------------"
+    echo "------------------Finished--------------------"
+    echo "----------------------------------------------"
+
 
     R_LIBS=/tmp/r-site-library R CMD Rd2pdf . --no-preview --encoding=utf8 -o $r_build/$r_pdf
 
