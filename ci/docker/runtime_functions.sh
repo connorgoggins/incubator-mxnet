@@ -1694,7 +1694,7 @@ build_r_docs() {
     conda activate /work/conda_env
     pip install themes/mx-theme
     pip install -e /work/mxnet/python --user
-
+    cd /work/mxnet/
     unittest_ubuntu_minimal_R
 
     pushd $r_root
@@ -1717,6 +1717,9 @@ build_r_docs() {
     python3 Rd2SphinxRst/Rd2SphinxRst.py ./man/ ./toctree/ ../docs/r_docs/r/api/
 
     cd ../docs/r_docs/r/
+    pushd /work/mxnet/docs/r_docs/r/
+    pwd
+    echo "here!"
     make clean
     make html EVAL=0
 
