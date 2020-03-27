@@ -21,7 +21,7 @@ all:
 	  'using Pkg; \
 	   Pkg.develop(PackageSpec(name="MXNet", path = joinpath(pwd(), "..")))'
 	julia --color=yes --project=./ ./make.jl
-	pip install --user Markdown==3.2 \
+	pip install --user Markdown==3.1.1 \
     mkdocs==1.0.4 \
 		mkdocs-material==4.6.0 \
 	  pygments==2.5.2 \
