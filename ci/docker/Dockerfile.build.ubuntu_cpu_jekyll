@@ -29,8 +29,7 @@ RUN apt-get update && apt-get install -y \
       git \
       zlib1g-dev \
       gnupg2 \
-      curl \
-      wget
+      curl
 
 # Always last, except here to prevent conflicts with rvm
 ARG USER_ID=0
